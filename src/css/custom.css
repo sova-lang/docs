@@ -1,0 +1,224 @@
+/**
+ * Sova theme - inspired by the owl logo's teal-to-purple gradient.
+ * Light mode uses the brighter teal as primary; dark mode dials the
+ * background toward deep indigo so the gradient accents stay readable.
+ */
+
+:root {
+  --ifm-color-primary: #14b8a6;
+  --ifm-color-primary-dark: #0d9488;
+  --ifm-color-primary-darker: #0f766e;
+  --ifm-color-primary-darkest: #134e4a;
+  --ifm-color-primary-light: #2dd4bf;
+  --ifm-color-primary-lighter: #5eead4;
+  --ifm-color-primary-lightest: #99f6e4;
+
+  --ifm-color-secondary: #8b5cf6;
+
+  --ifm-background-color: #fafdfd;
+  --ifm-background-surface-color: #ffffff;
+
+  --ifm-heading-color: #0f172a;
+
+  --ifm-code-font-size: 0.92rem;
+  --ifm-font-family-monospace:
+    'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular,
+    'SF Mono', Menlo, Consolas, monospace;
+
+  --docusaurus-highlighted-code-line-bg: rgba(20, 184, 166, 0.12);
+
+  --sova-gradient: linear-gradient(135deg, #2dd4bf 0%, #3b82f6 50%, #8b5cf6 100%);
+  --sova-gradient-soft: linear-gradient(
+    135deg,
+    rgba(45, 212, 191, 0.15) 0%,
+    rgba(139, 92, 246, 0.15) 100%
+  );
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #2dd4bf;
+  --ifm-color-primary-dark: #14b8a6;
+  --ifm-color-primary-darker: #0d9488;
+  --ifm-color-primary-darkest: #0f766e;
+  --ifm-color-primary-light: #5eead4;
+  --ifm-color-primary-lighter: #99f6e4;
+  --ifm-color-primary-lightest: #ccfbf1;
+
+  --ifm-color-secondary: #a78bfa;
+
+  --ifm-background-color: #0b0d18;
+  --ifm-background-surface-color: #121527;
+
+  --ifm-navbar-background-color: #0e1122ee;
+  --ifm-footer-background-color: #0b0d18;
+
+  --ifm-heading-color: #f8fafc;
+
+  --docusaurus-highlighted-code-line-bg: rgba(45, 212, 191, 0.18);
+}
+
+/* Navbar - a subtle gradient underline gives the bar a small accent
+ * without overwhelming the content below it. */
+.navbar {
+  border-bottom: 1px solid transparent;
+  background-image: var(--ifm-navbar-background-color, #ffffff),
+    var(--sova-gradient);
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  border-image: var(--sova-gradient) 1;
+  border-image-slice: 0 0 1 0;
+}
+
+.navbar__title {
+  background: var(--sova-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.navbar__logo img {
+  filter: drop-shadow(0 2px 6px rgba(20, 184, 166, 0.3));
+}
+
+/* Hero - sets the gradient as a soft backdrop on the landing page. */
+.hero {
+  background: var(--sova-gradient-soft);
+}
+
+[data-theme='dark'] .hero {
+  background: radial-gradient(
+      circle at 20% 20%,
+      rgba(45, 212, 191, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(circle at 80% 30%, rgba(139, 92, 246, 0.22), transparent 60%),
+    var(--ifm-background-color);
+}
+
+.hero__title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  background: var(--sova-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.03em;
+}
+
+.hero__subtitle {
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  color: var(--ifm-color-emphasis-700);
+  max-width: 720px;
+  margin: 1rem auto;
+}
+
+/* CTA buttons on the landing page. */
+.button--primary {
+  background: var(--sova-gradient);
+  border: none;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(20, 184, 166, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(139, 92, 246, 0.3);
+  color: white;
+}
+
+.button--secondary {
+  background-color: transparent;
+  border: 1px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .button--secondary {
+  border-color: var(--ifm-color-primary-light);
+  color: var(--ifm-color-primary-light);
+}
+
+/* Sidebar - gentle highlight on the active page so the gradient feels
+ * present without distracting from reading. */
+.menu__link--active {
+  background: var(--sova-gradient-soft);
+  color: var(--ifm-color-primary-darker);
+  font-weight: 600;
+}
+
+[data-theme='dark'] .menu__link--active {
+  color: var(--ifm-color-primary-light);
+}
+
+/* Code blocks - softer borders, more breathing room. */
+.theme-code-block {
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] .theme-code-block {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+}
+
+/* Inline code keeps the teal/purple feel. */
+code {
+  background-color: rgba(45, 212, 191, 0.1);
+  color: var(--ifm-color-primary-darker);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.92em;
+}
+
+[data-theme='dark'] code {
+  background-color: rgba(45, 212, 191, 0.18);
+  color: var(--ifm-color-primary-light);
+}
+
+/* Headings get a small teal underline accent on H2 to mark sections. */
+.markdown > h2 {
+  margin-top: 2.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid transparent;
+  border-image: var(--sova-gradient) 1;
+  border-image-slice: 0 0 1 0;
+}
+
+/* Feature grid on the landing page. */
+.features {
+  padding: 4rem 0;
+}
+
+.feature-card {
+  height: 100%;
+  padding: 1.6rem;
+  border-radius: 14px;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 12px 28px rgba(45, 212, 191, 0.15);
+}
+
+[data-theme='dark'] .feature-card {
+  background: var(--ifm-background-surface-color);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.feature-card h3 {
+  margin-top: 0;
+  background: var(--sova-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Tabs / admonitions stay readable in dark mode. */
+[data-theme='dark'] .admonition {
+  background-color: rgba(45, 212, 191, 0.06);
+}
