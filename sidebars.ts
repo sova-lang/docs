@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
         'language/enums',
         'language/casts',
         'language/generics',
+        'language/interfaces',
         'language/concurrency',
         'language/packages',
       ],

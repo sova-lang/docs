@@ -6,6 +6,15 @@ sidebar_position: 1
 
 # What is Sova?
 
+:::warning Sova is in alpha
+The language, the toolchain, and the standard library are all under
+active development. Surface syntax can change between releases, the
+compiler still has known bugs, and breaking changes are likely
+without a deprecation window. Use Sova for exploration and personal
+projects today; treat anything you build with it as something you
+might need to refactor when the next version lands.
+:::
+
 Sova is a multi-tier programming language. You write a single Sova codebase
 and the compiler emits two artefacts: a Go binary that runs the backend and
 a JavaScript bundle that runs in the browser. The two halves share the same

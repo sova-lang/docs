@@ -77,6 +77,84 @@ The grammar:
 - `<T: I1 with M1 + M2>` — interfaces *and* mixins, separated by `with`.
 - `<T with M1 + M2>` — mixin constraints only.
 
+## Wildcards
+
+Sometimes a signature wants to *accept* a generic type but does not
+care about the specific parameter at the call site — only that the
+caller passes "some instance". Sova spells this with the wildcard
+`?`, a first-class member of the type grammar.
+
+The plain wildcard means "any type":
+
+```sova
+func describe(x: ?): string {
+    return (x as string)
+}
+```
+
+`?` is equivalent to `any` for the value's static type. The difference
+is purely stylistic: `?` reads as "I don't care which type" at a call
+site, whereas `any` reads as "this value can be anything for the
+lifetime of the binding". Use whichever feels right in context.
+
+### Bounded wildcards
+
+You can pin the wildcard to interface or mixin constraints:
+
+```sova
+interface Drawable { func draw() }
+interface Sized    { func size(): int }
+
+mixin   Tagged    { tags: []string = [] }
+
+func render(x: ?: Drawable + Sized) {
+    x.draw()
+    println(x.size())
+}
+
+func archive(x: ? with Tagged) {
+    for t in x.tags {
+        println(t)
+    }
+}
+
+func attach(x: ?: Drawable with Tagged) {
+    x.draw()
+    println(x.tags[0])
+}
+```
+
+The grammar mirrors the constraint grammar for type parameters:
+
+- `? : I1 + I2` — must implement these interfaces.
+- `? with M1 + M2` — must mix in these mixins.
+- `? : I1 with M1` — combined; interfaces and mixins.
+
+Constraints are accepted by the type checker and recorded in the IR,
+but the v1 type system does not enforce them at the call site (the
+type-erasure approach treats every parameter as bidirectionally
+assignable). They are documentation today, with enforcement coming in
+a later release; the syntax is stable so any code you write now
+remains valid then.
+
+### When to use wildcards vs named parameters
+
+Use `?` when the type appears in *exactly one position* in the
+signature — typically a single parameter. Once a type appears more
+than once (a parameter and a return value, or two parameters that
+must match), reach for a named parameter:
+
+```sova
+// Wildcard is fine: the type appears once, the caller cares only that it implements Sized.
+func area(shape: ?: Sized): int { return shape.size() }
+
+// Named parameter: caller and callee both rely on the link.
+func swap<T>(a: T, b: T): (T, T) { return (b, a) }
+```
+
+If you find yourself writing `?: I` in two parameter slots, switch to
+`<T: I>` so the compiler can track that they refer to the same type.
+
 ## Generic types in shared positions
 
 Generic types travel across the wire boundary like any other type:

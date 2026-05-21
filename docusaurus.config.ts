@@ -45,6 +45,14 @@ const config: Config = {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
     },
+    announcementBar: {
+      id: 'sova-alpha-warning',
+      content:
+        '⚠ <strong>Sova is in alpha.</strong> The language is unstable, surface syntax can change between releases, and parts of the toolchain still contain bugs. Treat the documentation here as a moving target.',
+      backgroundColor: 'transparent',
+      textColor: '#ffffff',
+      isCloseable: false,
+    },
     navbar: {
       title: 'Sova',
       logo: {

@@ -222,3 +222,55 @@ code {
 [data-theme='dark'] .admonition {
   background-color: rgba(45, 212, 191, 0.06);
 }
+
+/* Announcement bar - the alpha warning. Loud on purpose: a gradient
+ * stripe that matches the logo, with a soft animated shimmer so the
+ * eye notices it on every page load. */
+div[class*='announcementBar_'] {
+  background: var(--sova-gradient);
+  color: #ffffff !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 16px rgba(45, 212, 191, 0.2);
+  --site-announcement-bar-stripe-color1: rgba(255, 255, 255, 0.12);
+  --site-announcement-bar-stripe-color2: rgba(255, 255, 255, 0.0);
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.12) 100%
+    ),
+    var(--sova-gradient);
+  background-size: 200% 100%, 100% 100%;
+  animation: sova-announcement-shimmer 14s linear infinite;
+}
+
+div[class*='announcementBar_'] strong {
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+div[class*='announcementBar_'] a,
+div[class*='announcementBar_'] a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes sova-announcement-shimmer {
+  0% {
+    background-position: 0% 0%, 0 0;
+  }
+  100% {
+    background-position: 200% 0%, 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  div[class*='announcementBar_'] {
+    animation: none;
+  }
+}

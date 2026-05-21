@@ -108,13 +108,67 @@ Sova's cast policy:
 - **Transparent through aliases.** Casting to or from a `using` alias
   is the same as casting to or from the underlying type.
 
-## `as?` (planned)
+## `as?` — safe casts
 
-A future version of the language will accept `as? T` to return
-`option<T>` rather than the zero value on failure. The grammar already
-parses the form; the type checker currently treats it the same as `as`.
-Refrain from relying on it for safety today; check the result manually
-if you need to.
+When you want to distinguish a successful cast from a failed one, use
+`as?`. The result is an `option<T>` rather than a plain `T`: a
+successful conversion returns `some(value)`, and a failed one returns
+`none`. Nothing in the chain panics, on either backend.
+
+```sova
+let raw: any = "42"
+
+let parsed = (raw as? int)
+when parsed {
+    some(n) => println("got " + (n as string))
+    none    => println("not a number")
+}
+
+let fallback = (raw as? float) ?? 0.0
+let userName = (raw as? string) ?? "anonymous"
+```
+
+`as?` accepts the same conversions `as` does, plus a few extras that
+have an inherent failure case:
+
+| Conversion | `as T` behaviour | `as? T` behaviour |
+| --- | --- | --- |
+| `string → int` | parses, returns `0` on failure | parses, returns `none` on failure |
+| `string → float` | parses, returns `0.0` on failure | parses, returns `none` on failure |
+| `string → bool` | `true` only for `"true"`, else `false` | `some(true/false)` for `"true"`/`"false"`, else `none` |
+| `any → ConcreteT` | runtime type assertion, returns zero value on mismatch | runtime type assertion, returns `none` on mismatch |
+| numeric widening / narrowing (`int ↔ float`, `int ↔ byte`, `int ↔ char`) | always succeeds | always succeeds, wrapped in `some(...)` |
+| `int|float|bool|char → string` | always succeeds | always succeeds, wrapped in `some(...)` |
+
+In short, `as?` is the right tool whenever the caller actually wants
+to know whether the conversion succeeded. `as` is for the cases where
+the failure mode of "use the zero value and keep going" is acceptable
+or even desired.
+
+### Pairing with `guard let`
+
+`as?` plays nicely with `guard let`:
+
+```sova
+func parseUser(raw: any): option<User> {
+    guard let id = (raw as? string) return none
+    return findUser(id)
+}
+```
+
+The guard rejects bad input early; the rest of the function then sees
+`id: string` without ceremony.
+
+### Pairing with `??`
+
+The coalescing operator gives you a typed default:
+
+```sova
+let port = (env.get("PORT") as? int) ?? 8080
+```
+
+If the environment variable is unset or unparsable, `port` falls back
+to `8080`.
 
 ## Putting it together
 
