@@ -124,7 +124,21 @@ Sova ships an LSP server. The recommended editor support is the
 **Sova VS Code extension**, which connects to `sova lsp` for diagnostics,
 navigation, hover information, completions, and refactorings.
 
-To install the extension during development:
+Install it from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=DasDarki.sova),
+or from the VS Code Quick Open prompt (`Ctrl+P` / `Cmd+P`):
+
+```text
+ext install DasDarki.sova
+```
+
+The extension auto-discovers `sova` on `PATH` and starts `sova lsp` for
+you — no further configuration needed once the toolchain is installed.
+
+### Building the extension from source
+
+If you want to hack on the extension itself, build it from the
+repository instead of installing from the Marketplace:
 
 ```bash
 cd editors/vscode-sova
@@ -132,9 +146,9 @@ npm install
 npm run compile
 ```
 
-Then load the folder in VS Code through *Run Extension*. Once the
-extension is published you will be able to install it from the
-Marketplace and skip the manual build.
+Then load the folder in VS Code through *Run Extension*.
+
+### Other editors
 
 If you use a different editor, point its language-client extension at the
 command `sova lsp`. Every editor with LSP support will get the same

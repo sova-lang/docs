@@ -170,3 +170,58 @@ to populate `.sova/deps/` and refresh the lockfile.
 The lockfile (`sova.lock`) is committed; `sova install` reproduces a
 known-good dependency tree byte-for-byte (subject to cache state),
 and `sova update` is the only command that rewrites it.
+
+### Git dependencies and monorepos
+
+Pull a dependency directly from a git repository by giving its URL plus
+a ref selector. The selector picks the exact commit; the priority is
+`rev` > `tag` > `branch` > version range:
+
+```toml
+[dependencies]
+http       = { git = "https://github.com/sova-lang/http",  tag = "v1.4.2" }
+sandbox    = { git = "https://github.com/sova-lang/sandbox", branch = "main" }
+research   = { git = "https://github.com/sova-lang/research", rev = "abc1234" }
+flexible   = { git = "https://github.com/sova-lang/flex",  version = "^2.0" }
+```
+
+When the same git repository hosts several Sova packages — a typical
+monorepo layout with one `sova.toml` per library — point each
+dependency at the subdirectory that holds the package with the
+`subdir` field:
+
+```toml
+[dependencies]
+greet  = { git = "https://github.com/me/sova-libs", tag = "greet-v0.2.0",  subdir = "libs/greet"  }
+mathy  = { git = "https://github.com/me/sova-libs", tag = "mathy-v1.4.2",  subdir = "libs/mathy"  }
+events = { git = "https://github.com/me/sova-libs", branch = "main",       subdir = "libs/events" }
+```
+
+Each entry behaves as if it were the only package in the repository:
+the resolver reads the `sova.toml` inside the subdirectory, the
+materialiser stages only that subtree under `.sova/deps/`, and the
+lockfile records the subdir alongside the commit so the install is
+reproducible. The same repository can be cloned just once and serve
+several dependencies of your project, each pinned to its own version
+through a per-package tag scheme like `greet-v0.2.0`.
+
+`subdir` works the same way on `path = ...` dependencies — handy when
+several local libraries live under one directory while you develop
+them:
+
+```toml
+greet = { path = "../monorepo", subdir = "libs/greet" }
+mathy = { path = "../monorepo", subdir = "libs/mathy" }
+```
+
+The CLI shorthand `sova add` accepts `subdir=...` as a URL fragment
+parameter:
+
+```bash
+sova add greet "https://github.com/me/sova-libs#tag=greet-v0.2.0&subdir=libs/greet"
+```
+
+The subdir path is interpreted relative to the repository root and
+must not escape it; `subdir = "../something"` is rejected at install
+time. Missing subdirectories produce a clean diagnostic rather than a
+silent broken install.

@@ -19,9 +19,10 @@ sova lsp
 ```
 
 The command starts the language server on stdio. Editors usually
-configure this for you automatically; the VS Code extension shipped in
-`editors/vscode-sova/` does so out of the box. For Vim, Neovim, Helix,
-Zed, and Emacs, point the LSP client at the command `sova lsp`.
+configure this for you automatically; the official
+[Sova VS Code extension](https://marketplace.visualstudio.com/items?itemName=DasDarki.sova)
+does so out of the box (`ext install DasDarki.sova`). For Vim, Neovim,
+Helix, Zed, and Emacs, point the LSP client at the command `sova lsp`.
 
 ## Capabilities at a glance
 
@@ -82,8 +83,15 @@ in `let s: strings.Stripper = ...` jumps to the `type` declaration.
 
 ## VS Code extension
 
-The reference editor integration is the `vscode-sova` extension. It
-launches `sova lsp` on demand, listens to the standard events, and
+The reference editor integration is published as
+[`DasDarki.sova`](https://marketplace.visualstudio.com/items?itemName=DasDarki.sova)
+on the Visual Studio Marketplace. Install it from inside VS Code with:
+
+```text
+ext install DasDarki.sova
+```
+
+It launches `sova lsp` on demand, listens to the standard events, and
 exposes three commands:
 
 - `Sova: Restart Language Server` — for those rare moments after a
