@@ -46,8 +46,13 @@ const sidebars: SidebarsConfig = {
       label: 'Frontend',
       collapsed: false,
       items: [
+        'frontend/strix-overview',
         'frontend/views',
         'frontend/reactivity',
+        'frontend/app-and-plugins',
+        'frontend/router',
+        'frontend/i18n',
+        'frontend/stores',
       ],
     },
     {

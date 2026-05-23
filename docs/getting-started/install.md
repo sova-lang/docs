@@ -137,16 +137,20 @@ you — no further configuration needed once the toolchain is installed.
 
 ### Building the extension from source
 
-If you want to hack on the extension itself, build it from the
-repository instead of installing from the Marketplace:
+The extension lives in its own repository at
+[github.com/sova-lang/vscode-sova](https://github.com/sova-lang/vscode-sova).
+If you want to hack on it, clone that repository and build it locally
+instead of installing from the Marketplace:
 
 ```bash
-cd editors/vscode-sova
+git clone https://github.com/sova-lang/vscode-sova
+cd vscode-sova
 npm install
 npm run compile
 ```
 
-Then load the folder in VS Code through *Run Extension*.
+Then open the folder in VS Code and launch the *Run Extension* target
+to spawn a development host with your local build attached.
 
 ### Other editors
 
