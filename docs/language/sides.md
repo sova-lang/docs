@@ -84,3 +84,102 @@ If you have a piece of code that genuinely needs to cross the boundary
 function. Wiring is the *only* way to bridge the two sides; importing
 across is intentionally forbidden so the compiler can keep the artefact
 boundaries tight.
+
+## Per-member sharing on a one-sided type
+
+The file-level rule is binary: either a type lives on one side or it
+lives on both. That is fine for genuinely shared entities, but it
+forces an awkward dance when *most* of a type belongs to one side and
+only a sliver needs to cross. The classic example is a database
+entity: a `User` with `id`, `name`, `passwordHash`, plus a
+`save()` method that hits GORM. The Go side wants everything; the
+frontend only needs `id`, `name`, and maybe a `display()` method that
+formats the user. You do not want to write a DTO, marshal back and
+forth, or split the type into two parallel declarations.
+
+Sova solves this with a per-member `shared` modifier. Inside a type
+that lives in a one-sided file, any field, method, constructor, or
+cast prefixed with `shared` opts into emission on the other side:
+
+```sova
+package myapp on backend
+
+import "gorm"
+
+type User {
+    @structTag("gorm", "primaryKey;autoIncrement")
+    shared id: int = 0
+
+    shared name: string = ""
+
+    passwordHash: string = ""          // backend-only
+
+    shared new(id: int, name: string) {
+        this.id = id
+        this.name = name
+    }
+
+    shared func display(): string {
+        return name + " (#" + (id as string) + ")"
+    }
+
+    func save() {                      // backend-only
+        gorm.save(db, this)
+    }
+}
+```
+
+The frontend that imports `myapp` sees a `User` with `id`, `name`, the
+`new(id, name)` constructor, and the `display()` method — but not
+`passwordHash` or `save()`. The Go backend keeps the full type.
+When a wired function returns a `User`, the wire layer reifies the
+payload into the frontend's class on arrival, so `user.display()` is
+callable as if you had constructed the instance locally.
+
+### Rules a `shared` member must follow
+
+The compiler checks that shared members can genuinely run on the
+other side. The rules are conservative on purpose: a body that
+compiles as `shared` must be safe to ship to the frontend without any
+side-specific surgery.
+
+- A **shared field**'s type must be transferable: primitives, options,
+  lists / arrays / maps / tuples of transferable, or other shared
+  types. The same definition as wire-transferable types.
+- A **shared method, constructor, or cast** body may reference:
+  - `this` and shared fields of `this`.
+  - The body's own parameters and locally declared variables.
+  - Other `shared` methods on `this`.
+  - Symbols imported from `on shared` packages (including the
+    transferable subset of the standard library).
+- A shared body may **not** reference:
+  - Non-shared fields or methods of the enclosing type.
+  - Top-level vars or functions from a one-sided file.
+  - Symbols imported from a one-sided package.
+
+Each violation is a compile error with a precise pointer at the
+forbidden reference, so when the validator rejects a shared body the
+fix is always one of: mark the referenced member `shared`, move the
+helper into a shared package, or pull the body apart so the
+side-specific part lives on a non-shared sibling.
+
+### Symmetry
+
+The same rules apply from the other direction. A frontend-declared
+type can mark members `shared` and the Go side will get a struct (with
+its `@structTag` annotations) containing just the shared fields. The
+type system is symmetric: whoever declares the type is the authority
+on the full surface, and the other side gets the shared subset for
+free.
+
+### When to reach for it
+
+| You want… | Use |
+| --- | --- |
+| The exact same type on both sides | `on shared` file |
+| One side owns most of the type, the other needs a slice | per-member `shared` modifier |
+| A frontend that calls into backend logic | wired function |
+
+Per-member sharing covers the entity-with-a-thin-cross-side-surface
+case that `on shared` is awkward for. The cost is one keyword per
+member — the compiler does the rest.

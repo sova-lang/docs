@@ -76,6 +76,31 @@ Sova treats `Date` as a nominal struct. Field accesses fall through to
 the host language; there is no Sova-side declaration of the fields.
 Use sparingly — every extern type widens the trust surface.
 
+## Go struct tags via `@structTag`
+
+When a Sova `type` compiles to a Go struct (every `on backend` type
+plus the shared field subset of frontend types — see
+[Sides → Per-member sharing](/language/sides#per-member-sharing-on-a-one-sided-type)),
+the compiler reaches for Go struct tags whenever a library on the Go
+side wants metadata next to a field. The Sova surface is the
+`@structTag` annotation; details and the multi-namespace stacking
+rules are documented under
+[Types → Struct tags](/language/types#struct-tags-via-structtag).
+
+```sova
+type User {
+    @structTag("gorm", "primaryKey;autoIncrement")
+    @structTag("json", "id")
+    id: int = 0
+}
+```
+
+The compiler does not know which keys a library reflects on — `gorm`,
+`validate`, `xml`, anything else — and intentionally does not bake
+the list in. Whatever you put in the first argument becomes the tag
+namespace verbatim, so a new ORM does not need compiler support to
+work end-to-end with Sova-declared models.
+
 ## Extern variables
 
 Bind to a constant value:

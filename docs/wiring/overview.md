@@ -160,6 +160,66 @@ wire(authz: ["admin"]) func banUser(id: string): User { ... }
 The handler checks `session.hasRole("admin")` and returns
 `WireState.Forbidden` (HTTP 403) when the check fails.
 
+## Typed values across the wire
+
+A common pain point with JSON-over-HTTP frameworks is that the data
+arrives as a property bag: the wire returns `{ id: 42, name: "Alice" }`,
+your client gets a plain JavaScript object, and methods you declared on
+the class are unreachable. You then write a constructor that copies
+fields out of the bag and rebuilds an instance — DTO code that exists
+only to undo the JSON round-trip.
+
+Sova does this work for you. Every wired function whose return type is
+a Sova `type` (or a container of one — a slice of users, an option of
+a tag, a tuple, a map with struct values) is wrapped on the frontend
+side in a small reviver. The reviver walks the JSON, looks up the
+declared class in a runtime registry, and produces a real instance
+with the right prototype:
+
+```sova
+type User {
+    id: int = 0
+    name: string = ""
+
+    func display(): string {
+        return name + " (#" + (id as string) + ")"
+    }
+}
+
+wire(authn: false) func getUser(): User { ... }
+```
+
+```sova
+// frontend
+import "myapp/backend"
+
+func main() {
+    let u, _ = getUser()
+    println(u.display())              // → "Alice (#42)"
+}
+```
+
+`u` is a `User` instance, not a plain object, and `u.display()`
+dispatches to the method body that was emitted alongside the class.
+The same revival also works recursively: a `User` whose
+`tags: []Tag` field comes through the wire produces an array of `Tag`
+instances, each with its own methods callable.
+
+Sova-side struct types declared `on shared` (or with `shared` members
+in a one-sided file — see [Per-member sharing](/language/sides#per-member-sharing-on-a-one-sided-type))
+participate automatically. There is nothing to opt in to: if the wire
+signature names a class type, you get instances back.
+
+The same mechanism applies in the other direction. A wired function
+that takes a class type as a parameter receives an instance when called
+from JavaScript code that constructed one; backend Go code receives a
+typed Go struct via reflection-driven unmarshalling. And for frontend
+wires invoked from the backend (the inverse direction in a sessions-based
+push), the WebSocket dispatcher revives each argument against the
+declared parameter type before calling the registered handler. The
+upshot is that class instances round-trip across the boundary in both
+directions without any per-wire helper code.
+
 ## What you get for free
 
 When the build runs, the compiler:
@@ -170,8 +230,9 @@ When the build runs, the compiler:
    up the session, runs `authn`/`authz`, invokes your function, and
    serialises the result as `{value, state}`.
 3. **Emits a frontend stub** with the same name and signature. The
-   stub `fetch`es the right URL, JSON-encodes any body, and decodes the
-   response.
+   stub `fetch`es the right URL, JSON-encodes any body, decodes the
+   response, and *revives* class-typed return values so methods are
+   immediately callable.
 4. **Registers everything in the generated `main()`** so the backend
    binary starts an HTTP server on the configured port without you
    writing any plumbing.

@@ -80,12 +80,51 @@ effect or view that reads it picks up changes transitively.
 
 ## Wiring reactivity to wires
 
-Wired values plug in cleanly. A `wire let value: int = 0` is
-already reactive on the frontend; reading it inside `effect(...)`
-subscribes to backend pushes.
+Wired values plug in cleanly. A `@reactive wire let` declared on the
+backend is observable on the frontend through the exact same protocol
+as a `@reactive` class field: reads inside an `effect`, a `computed`,
+or a component's `view()` register the wire let as a dependency; the
+backend's push handler writes through a reactive setter that fires
+every observer; the surrounding effect re-runs on the next microtask.
 
-A common pattern: keep server state in a reactive field, populate it
-with a wire call, and let the view re-render when it lands:
+```sova
+package game on backend
+
+@reactive wire let ingameTime: int = 0
+```
+
+```sova
+package game/client on frontend
+
+import "game" using { ingameTime }
+
+let banner = computed(func(): string {
+    return "Elapsed: " + (ingameTime as string) + "s"
+})
+
+effect(func() {
+    document.title = banner.value
+})
+```
+
+The `computed` re-evaluates whenever the backend pushes a new
+`ingameTime`; the effect re-runs whenever `banner.value` changes;
+the document title updates without manual subscription bookkeeping.
+The same pattern composes with components: a `view()` that reads
+`ingameTime` re-renders on every push.
+
+Drop the `@reactive` modifier on the wire let to opt out: the
+frontend mirror still updates, but reads do not subscribe and views
+do not re-render. Use the bare form when you want the cross-tier
+push but want to control re-renders manually. See
+[Wired state → Reactive integration](/wiring/wired-state#reactive-integration)
+for the wire-side of the picture.
+
+### Server state in a reactive field
+
+When the data is initial-fetched once rather than continuously
+pushed, the idiomatic pattern is a regular `@reactive` field
+populated with a wire call inside `onMount`:
 
 ```sova
 type App with Composable, Component {

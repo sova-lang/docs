@@ -166,13 +166,66 @@ The constraint is recorded on the type parameter and documented in
 hover popups; full constraint enforcement at the call site is
 scheduled for a future release.
 
+## Shared interface methods
+
+When an interface declares a method that needs to be callable on both
+sides, mark the signature with `shared`:
+
+```sova
+interface Greeter {
+    shared func greet(): string
+
+    func internalLog()
+}
+```
+
+The `shared` modifier on the contract method introduces a conformance
+rule: any type that implements `Greeter` must also mark its matching
+`greet` implementation as `shared`. The compiler enforces this with
+a precise diagnostic when an implementation forgets the modifier:
+
+```sova
+type Bad implements Greeter {
+    func greet(): string { ... }   // compile error: method must be `shared`
+}
+```
+
+```text
+error: type 'Bad' implements shared interface 'Greeter' but its
+method 'greet' is not marked `shared`; add the `shared` modifier so
+the method body emits on both sides
+```
+
+The rule is one-way: a non-shared interface method does not constrain
+the implementation, which is free to be shared or one-sided as it
+likes. So you can mix the two in a single contract and let each
+method opt in to cross-side emission individually.
+
+An interface declared entirely in an `on shared` file gets the same
+treatment implicitly: every one of its methods is treated as shared,
+so implementations must mark them. This matches what users usually
+expect from a "shared interface" without needing per-method
+ceremony.
+
+See [Sides → Per-member sharing](/language/sides#per-member-sharing-on-a-one-sided-type)
+for the rules a shared method body must satisfy. Combined, shared
+interface methods plus per-member-shared types let a backend-owned
+`User` expose a `Greeter` surface that runs on the frontend too,
+without DTOs or hand-written stubs.
+
 ## Interfaces over the wire
 
-Wired functions cannot accept or return interface-typed values
-directly. The reason is mechanical: the wire encoder needs to know
-the exact runtime shape so the receiver can decode it, and a polymorphic
-interface erases that information. The compiler reports
-`ErrWireNonTransferableType` if you try.
+Interface *values* cannot cross a wire directly. The reason is
+mechanical: the wire encoder needs to know the exact runtime shape so
+the receiver can decode it, and a polymorphic interface erases that
+information. The compiler reports `ErrWireNonTransferableType` if you
+try to pass an interface as a wire parameter or return type.
+
+Concrete types that *implement* a shared interface, however, travel
+the wire perfectly well. Return a `User` from a wired function and the
+frontend gets a `User` instance with every shared method (including
+the ones the interface required) callable in the same way you would
+call them on a locally-constructed instance.
 
 When you need polymorphism across the wire, encode the variant
 explicitly — for example, with a tagged enum:

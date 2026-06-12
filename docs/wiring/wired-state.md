@@ -65,23 +65,69 @@ wire(transport: "ws") let activeUsers: int = 0
 Without the transport hint, the variable behaves like a const that
 the backend happens to be able to write to (no broadcast).
 
-## Reactive frontend integration
+## Reactive integration
 
-A wired var paired with the reactive runtime (see
-[Reactivity](/frontend/reactivity)) becomes a reactive value
-automatically. Wrap it with `effect(...)` in a component and the view
-re-renders whenever the backend publishes a new value.
+A `@reactive wire let` is the reactive form of a wired var: every
+push from the backend not only updates the mirror, but also notifies
+any [Strix](/frontend/strix-overview) `effect`, `computed`, or
+`view()` that read the value. The two pieces — backend push and
+frontend reactivity — share the same observer protocol Strix uses for
+ordinary `@reactive` class fields, so wired state composes with
+component state without any glue code.
 
 ```sova
-import "myapp/backend"
+package game on backend
 
-effect(func() {
-    document.title = "Active: " + string(activeUsers)
-})
+@reactive wire let ingameTime: int = 0
+
+wire(authn: false) func tick() {
+    ingameTime = ingameTime + 1
+}
 ```
 
-Every broadcast triggers the effect, the title updates, and the user
-sees the live number without any manual subscription bookkeeping.
+```sova
+package game/client on frontend
+
+import "strix" using *
+import "strix/dom" using *
+import "game" using { ingameTime, tick }
+
+type Clock with Composable, Component {
+    func view(): Composable {
+        return Div {
+            P { "Elapsed: " + (ingameTime as string) + "s" }
+            Button(onClick: doTick) { "Tick" }
+        }
+    }
+
+    private func doTick() {
+        let _ = tick()
+    }
+}
+```
+
+Reading `ingameTime` inside `view()` registers the wire let as a
+dependency of the view's effect. When any session calls `tick()`,
+the backend handler reassigns `ingameTime`; the compiler-emitted
+broadcast pushes the new value to every connected frontend; the
+listener on each frontend writes through a reactive setter that
+fires every dependency observer; Strix schedules the view for
+re-rendering on the next microtask; and the DOM updates the
+displayed seconds. None of those steps require user code: the
+modifier on the declaration is the only opt-in.
+
+The same machinery makes `computed` derivations of wire lets work
+out of the box. A `computed<string>(func(): string { return
+"Game time: " + (ingameTime as string) + "s" })` re-evaluates on
+every push and propagates the new string through whichever consumers
+read its `.value`.
+
+If you only need the backend-push delivery — without the Strix
+re-render — drop the `@reactive` modifier. The bare `wire let` form
+still mirrors the value on the frontend and updates it on push, but
+reads outside an effect do not subscribe and views do not re-render
+when the value changes. See [Strix reactivity](/frontend/reactivity)
+for the underlying primitives.
 
 ## When to reach for a wire function vs a wired var
 
