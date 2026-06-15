@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'language/concurrency',
         'language/packages',
         'language/annotations',
+        'language/embed',
       ],
     },
     {
@@ -74,6 +75,7 @@ const sidebars: SidebarsConfig = {
         'advanced/interop',
         'advanced/testing',
         'advanced/deployment',
+        'advanced/bundling',
       ],
     },
     {

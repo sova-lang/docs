@@ -14,6 +14,8 @@ Strix patterns in `@`-prefixed shortcuts:
 - `@Route(path)` — register a function as a routable view; emits both
   a metadata tag and a build-wide registry entry.
 - `@PageTitle(title)` — attach a static title to a view.
+- `@StyleFile(path)` — point a component at an external `.css` file
+  and skip the inline-string boilerplate.
 
 Like the rest of Sova's annotation packs, every entry expands at
 compile time to existing primitives (`@reactive`, `@structTag`,
@@ -177,6 +179,95 @@ type. The tag is metadata only — read it from a layout component or a
 custom plugin that scans for `strix.title` tags. The pack ships it as
 a stable home for the "this view has a title" convention so multiple
 projects agree on the same tag namespace.
+
+## `@StyleFile(path)` — external CSS
+
+Strix's `Style` mixin asks each component for `func style(): string`
+that returns CSS. Authoring CSS inline as a JS-escaped string is
+unreadable past two rules. `@StyleFile` lets the component point at
+a real `.css` file next to it on disk:
+
+```sova
+type Button with Composable, Component, Style {
+    @StyleFile("./Button.css")
+
+    func view(): Composable {
+        return Element("button", "primary") { "Click" }
+    }
+}
+```
+
+With `Button.css` sitting next to `Button.sova`:
+
+```css
+.primary {
+    background: rebeccapurple;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+.primary:hover {
+    background: #4f3b6f;
+}
+```
+
+What the synth does:
+
+```sova
+synth StyleFile(path: string) on frontend type T {
+    emit @embed(path) private __strixStyleSource: string = ""
+    emit func style(): string {
+        return this.__strixStyleSource
+    }
+}
+```
+
+Two effects:
+
+1. **Injects a private field** `__strixStyleSource: string` carrying
+   the [`@embed`](/language/embed) annotation. The embed resolver reads
+   the CSS at compile time and inlines it as the field's default
+   value, so the contents are part of the JS bundle.
+2. **Injects a `style()` method** that returns the field. The
+   existing `Style` mixin's runtime (`__callStyle` →
+   `__injectScopedCss`) consumes the return value exactly like a
+   hand-written `style()` — no runtime path changes.
+
+The path is resolved relative to the source file the `@StyleFile`
+annotation is in, mirroring `@embed`'s rule. Strix-core components
+that ship with their own CSS keep working when consumed from a
+sibling project, because path resolution always anchors at the
+source.
+
+In `sova dev`, the watcher tracks the `.css` file — edit it and the
+component re-renders with the new styles automatically.
+
+### Using SCSS
+
+`@StyleFile` accepts `.scss` and `.sass` paths too — they're
+preprocessed at build time as long as `dart-sass` is installed.
+See [Embed → SCSS preprocessing](/language/embed#scss-preprocessing)
+for installation, pinning, and the `[build.scss]` opt-out.
+
+```sova
+type Button with Composable, Component, Style {
+    @StyleFile("./Button.scss")
+
+    func view(): Composable { ... }
+}
+```
+
+The synth + embed chain is identical to the `.css` case; only the
+file gets preprocessed before its contents are baked in.
+
+### When to keep writing `style()` by hand
+
+`@StyleFile` is sugar for the common case. For styles that genuinely
+depend on runtime state (theme tokens fetched from a backend, dynamic
+class names assembled from `@reactive` values, etc.), keep the
+hand-written `func style(): string { ... }` — the runtime injector
+(`__injectScopedCss`) handles it the same way.
 
 ## See also
 
