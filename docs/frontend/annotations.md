@@ -246,9 +246,11 @@ component re-renders with the new styles automatically.
 ### Using SCSS
 
 `@StyleFile` accepts `.scss` and `.sass` paths too — they're
-preprocessed at build time as long as `dart-sass` is installed.
+preprocessed at build time as long as `dart-sass` is installed on
+PATH (or pinned via `[build.scss] command = "..."` in `sova.toml`).
 See [Embed → SCSS preprocessing](/language/embed#scss-preprocessing)
-for installation, pinning, and the `[build.scss]` opt-out.
+for the installation surface and [Bundling → SCSS](/advanced/bundling#scss)
+for the build-pipeline view.
 
 ```sova
 type Button with Composable, Component, Style {
@@ -258,8 +260,67 @@ type Button with Composable, Component, Style {
 }
 ```
 
-The synth + embed chain is identical to the `.css` case; only the
-file gets preprocessed before its contents are baked in.
+`Button.scss` next to the component, with the full Sass surface
+(variables, nesting, mixins, `@use` partials, `@extend`):
+
+```scss
+@use "tokens";
+
+$pad-x: 16px;
+$pad-y: 8px;
+
+%clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.primary {
+    @extend %clickable;
+    background: tokens.$accent;
+    color: white;
+    padding: $pad-y $pad-x;
+    border-radius: 4px;
+    transition: background 150ms ease;
+
+    &:hover {
+        background: lighten(tokens.$accent, 5%);
+    }
+
+    &:disabled {
+        background: tokens.$divider;
+        cursor: not-allowed;
+    }
+}
+
+.large {
+    padding: ($pad-y * 1.5) ($pad-x * 1.5);
+    font-size: 1.125rem;
+}
+```
+
+The synth + embed chain is identical to the `.css` case — only the
+file gets preprocessed before its contents are baked in. The
+compiled CSS lands inline in the JS bundle (so no extra HTTP
+request) and Strix's runtime injector scopes it to the component
+just like a `.css` `@StyleFile`.
+
+LSP editor support extends naturally: class completion (`primary`,
+`large`), hover showing the compiled rule body, jump into the
+`.scss` file at the selector, references across the file and its
+partials, and unknown-class warnings on misspellings.
+
+#### When to choose `.scss` over `.css`
+
+| Style file size                 | Recommendation |
+| ------------------------------- | -------------- |
+| < 50 lines, no shared tokens    | `.css` — modern CSS nesting + custom properties cover it. |
+| Shared design tokens (colours, spacing scale) | `.scss` with a `_tokens.scss` partial. |
+| Per-theme variants              | `.scss` — variables make the variant swap cleanly. |
+| Heavy mixin reuse               | `.scss` — `%placeholder` + `@extend` keep the bundle small. |
+
+Sova's bundler minifies the inlined CSS regardless, so the
+production-bundle size difference between hand-written CSS and
+SCSS-compiled CSS is negligible. Pick by author ergonomics.
 
 ### When to keep writing `style()` by hand
 

@@ -150,11 +150,29 @@ so the size cost only matters at installation time.
 
 ## SCSS
 
-`@embed` (and therefore `@StyleFile`) understands `.scss` / `.sass`
-files. Sova doesn't ship a Sass compiler in-process — install
-[dart-sass](https://sass-lang.com/install) externally and the
-compiler picks it up from PATH automatically. Pin a specific binary
-or disable the feature entirely via `[build.scss]` in `sova.toml`:
+`@embed` (and therefore `@StyleFile`) accepts `.scss` and `.sass`
+sources alongside plain `.css`. The compiler preprocesses them to
+CSS at build time, then folds the result into the inlined string
+literal exactly like a hand-written CSS embed. The Sass surface you
+get is the upstream
+[dart-sass](https://sass-lang.com) one in full — variables, mixins,
+nesting, `@use` / `@import` partials, `@extend`, math, colour
+functions, control flow.
+
+### Installation
+
+Sova does not ship a Sass compiler in-process. Install
+[dart-sass](https://sass-lang.com/install) (or any compatible `sass`
+binary) and put it on `PATH`. The compiler auto-discovers it:
+
+```bash
+$ which sass
+/usr/local/bin/sass
+$ sass --version
+1.83.0 ...
+```
+
+Per-project pinning lives in `sova.toml`:
 
 ```toml
 [build.scss]
@@ -162,9 +180,127 @@ command = "/opt/dart-sass/sass"  # explicit path, or omit for PATH lookup
 enabled = true                    # set to false to forbid SCSS embeds
 ```
 
-See the [Embed → SCSS preprocessing](/language/embed#scss-preprocessing)
-section for the surface and known limits (partials aren't yet
-included in the dev watcher's reload set).
+`enabled = false` turns SCSS off entirely — any `@embed` referencing
+a `.scss` / `.sass` file then produces a clean compile-time
+diagnostic instead of silently invoking whatever binary happens to
+be on PATH. Useful for CI sandboxes that must not shell out, and
+for libraries that ship only `.css`.
+
+### End-to-end pipeline
+
+For a Strix component written with `@StyleFile`:
+
+```sova
+type Card with Composable, Component, Style {
+    @StyleFile("./Card.scss")
+
+    func view(): Composable {
+        return Div(class: "card") {
+            Div(class: "card-header") { H2 { "Title" } }
+            Div(class: "card-body") { "..." }
+        }
+    }
+}
+```
+
+…with `Card.scss` sitting next to the source:
+
+```scss
+@use "tokens";
+
+.card {
+    background: tokens.$surface;
+    border-radius: tokens.$radius-md;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+    .card-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid tokens.$divider;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    &.featured {
+        border: 2px solid tokens.$accent;
+    }
+}
+```
+
+…and a shared partial `_tokens.scss` in the same directory:
+
+```scss
+$surface: #ffffff;
+$divider: #e6e8eb;
+$accent:  rebeccapurple;
+$radius-md: 6px;
+```
+
+Build sequence on `sova build`:
+
+1. The `@StyleFile` synth lowers to an `@embed(path)`-decorated
+   private field on the type (see [Strix annotations](/frontend/annotations#stylefile)).
+2. `pass_resolve_embeds` resolves the path against the source file's
+   directory, recognises the `.scss` extension, and shells out to
+   `sass Card.scss`.
+3. dart-sass resolves `@use "tokens"` against `_tokens.scss`, expands
+   nesting, substitutes variables, and prints the compiled CSS to
+   stdout.
+4. The resolver captures the CSS bytes, stores them in the field's
+   default literal, and hashes the content for cache invalidation.
+5. The JS emitter inlines the CSS string into the bundle.
+6. esbuild minifies the bundle (the CSS is treated like any other
+   JS string literal — whitespace gets stripped).
+7. The hashed `runtime.[hash].js` lands in `assets/` and the Go
+   binary embeds the whole directory via `//go:embed`.
+
+At runtime the component's `style()` method returns the compiled
+CSS string and Strix's runtime injector scopes it onto the
+`[data-s-Card-<hash>]` attribute selector — identical to a
+hand-written CSS embed.
+
+### What you get in the editor
+
+The LSP integration matches the build-side capabilities one-for-one:
+
+- **Class completion** — typing `Div(class: "<cursor>")` offers
+  every class from `Card.scss` *and* every class from `_tokens.scss`
+  (and any other partial reached via `@use` / `@import`).
+- **Hover** — pointing at `"card-header"` shows the matching SCSS
+  rule body in a markdown popup, with the source file name (e.g.
+  `Card.scss`).
+- **Go to Definition** (F12) — jumps into the partial's source file
+  at the selector's line.
+- **Find All References** — lists every occurrence across the
+  stylesheet *and* its partials.
+- **Unknown-class warning** — `Div(class: "card-bdy")` (typo)
+  surfaces a Sova LSP warning at the literal's range on save.
+
+See [`@cssClass` editor support](/language/annotations#csscclass-editor-support)
+for the underlying mechanism.
+
+### Known limits
+
+- **Partial watching.** `sova dev` re-runs the build when the
+  embedded `.scss` file changes, but not when a partial reached via
+  `@use` / `@import` changes. Editing `_tokens.scss` requires a
+  manual save of the parent file (or restarting `sova dev`) to pick
+  up the change. The LSP class index DOES follow partials — only
+  the dev-mode rebuild trigger doesn't yet.
+- **Embedded compiler.** No in-process Sass implementation is shipped
+  with the Sova binary. Installing dart-sass externally is required,
+  which keeps the Sova binary small.
+- **`@forward` and module re-exports.** dart-sass handles these
+  perfectly at build time, but the LSP class extractor only follows
+  one `@use` hop from the file the `@embed` points at. Classes
+  re-exported via `@forward` through an intermediate module won't
+  surface in completion. Workaround: have `@embed` point at the
+  composing module directly, or list the partials individually.
+
+See [Embed → SCSS preprocessing](/language/embed#scss-preprocessing)
+for the surface details (diagnostic codes, error formatting, size
+caps).
 
 ## See also
 

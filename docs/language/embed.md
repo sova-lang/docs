@@ -19,8 +19,8 @@ Use it for:
 - Small binary assets (fonts, images) shipped with the app.
 
 For larger frontend asset workflows — content-hash cache busting,
-code splitting, automatic URL rewriting — see the upcoming bundling
-docs. `@embed` is the foundation layer everything else builds on.
+code splitting, automatic URL rewriting — see [Bundling](/advanced/bundling).
+`@embed` is the foundation layer everything else builds on.
 
 ## Surface
 
@@ -173,7 +173,9 @@ const ButtonCSS: string = ""
 ```
 
 The file (and any partials it `@use`s) gets compiled at build time;
-the CSS string ends up in your bundle.
+the CSS string ends up in your bundle. See
+[Bundling → SCSS](/advanced/bundling#scss) for the build-pipeline
+view (end-to-end example, LSP integration, known limits).
 
 ### Pinning a specific binary
 

@@ -10,8 +10,11 @@ the compiler — or a library that runs at compile time — extra
 information about that declaration. Sova ships two flavours of them:
 
 - **Built-in annotations** that the compiler itself reads. `@reactive`
-  on a field, `@structTag(...)` on a field that needs a Go struct tag.
-  These have hard-coded meaning baked into the compiler passes.
+  on a field, `@structTag(...)` on a field that needs a Go struct tag,
+  `@embed("path")` on a const that should bake a file's contents into
+  the build, `@cssClass` on a string parameter that the LSP should
+  treat as a CSS class slot. These have hard-coded meaning baked into
+  the compiler passes (and, for `@cssClass`, into the LSP).
 - **Custom annotations** written by you (or a library author) using
   the `synth` sub-language. A custom annotation looks identical at the
   use site — `@PrimaryKey`, `@Route("/users/:id")` — but it is
@@ -425,13 +428,74 @@ synth's signature and source, and **Go to Definition** on a
 
 ## Built-in annotations today
 
-| Name        | Targets        | Effect                                                       |
-| ----------- | -------------- | ------------------------------------------------------------ |
-| `@reactive` | field, wired let | Opts the declaration into Strix's reactive observation.    |
-| `@structTag(k, v)` | field   | Adds one `<k>:"<v>"` entry to the generated Go struct tag. |
+| Name                  | Targets             | Effect                                                       |
+| --------------------- | ------------------- | ------------------------------------------------------------ |
+| `@reactive`           | field, wired let    | Opts the declaration into Strix's reactive observation.      |
+| `@structTag(k, v)`    | field               | Adds one `<k>:"<v>"` entry to the generated Go struct tag.   |
+| `@embed("path")`      | top-level const, field | Bakes a file's contents into the declaration at compile time — backend gets a `//go:embed`-backed `string` / `[]byte`, frontend gets an inlined literal. See [Embed](/language/embed). |
+| `@cssClass`           | param, field        | Marks a string-typed parameter or field as a CSS-class slot. The compiler treats the annotation as metadata only; the LSP uses it to offer precise class completion, hover, and unknown-class warnings at call sites. See [`@cssClass` editor support](#csscclass-editor-support) below. |
 
 Everything else (`@Pk`, `@Route("/foo")`, `@Reactive`, ...) is a
 custom annotation defined by a library you depend on. The Strix and
 GORM annotation packs ship a curated set; see
 [Strix annotations](/frontend/annotations) and
 [GORM](/libraries/gorm#annotation-pack) for the full list.
+
+## `@cssClass` editor support
+
+`@cssClass` is purely an LSP affordance — the compiler accepts the
+annotation and emits nothing extra. Library authors put it on
+parameters or fields whose string values become CSS class names; the
+editor then turns generic string literals at those positions into
+real class slots:
+
+```sova
+// In a library (Strix's `HtmlElement` mixin uses this pattern):
+mixin HtmlElement {
+    @cssClass
+    class: any = ""
+    ...
+}
+
+type Div with Composable, HtmlElement {
+    ...
+}
+
+// In user code:
+Div(class: "primary")  // ← LSP offers `primary`, `btn-large`, ... here
+                       //   pulled from every @StyleFile / @embed CSS in the project
+```
+
+What the LSP layers on top of the plain annotation:
+
+1. **Completion** — typing inside the string at a `@cssClass`-marked
+   slot surfaces every class name in the project's stylesheets,
+   ranked above identifier-fallback noise and tagged with the
+   callee in the detail line (e.g. `CSS class · Div (arg #1)`).
+2. **Hover** — pointing at a known class shows the matching CSS rule
+   body and source file in a markdown popup.
+3. **Go to Definition** (F12) — jumps into the `.css` / `.scss` file
+   at the selector's line.
+4. **Find All References** — lists every occurrence of the class
+   across the project's stylesheets, including SCSS partials reached
+   via `@use` / `@import`.
+5. **Unknown-class warning** — when a string literal at a
+   `@cssClass` slot doesn't match any class in the project, a
+   Warning surfaces on save. Multi-class strings like `"primary large"`
+   are split and checked token-by-token; only the unknown tokens
+   trigger the warning.
+
+The annotation works equally on function parameters and on type
+fields (so type-constructor calls like `Div(class: "...")` get the
+same treatment as function calls like `Element("button", "primary")`).
+Named-argument call sites (`fn(class: "primary")`) are resolved by
+field/param name rather than positional index — exactly what Strix's
+ctor-call surface depends on.
+
+Without `@cssClass`, the LSP still falls back to a broad
+"any string literal in the file" heuristic for class completion (so
+users who copy-paste CSS classes from elsewhere aren't left out),
+but hover, jump, and the unknown-class warning only trigger when
+the slot is explicitly marked. The split is by design: opt-in
+precision where library authors care, soft fallback everywhere
+else.
