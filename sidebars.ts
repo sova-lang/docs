@@ -54,6 +54,7 @@ const sidebars: SidebarsConfig = {
         'frontend/router',
         'frontend/i18n',
         'frontend/stores',
+        'frontend/annotations',
       ],
     },
     {
@@ -62,8 +63,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'libraries/gorm',
-        'libraries/gorm-annotations',
-        'libraries/strix-annotations',
+        'libraries/redis',
       ],
     },
     {

@@ -24,7 +24,7 @@ through a `wire` boundary, not by exposing GORM directly.
 | `gorm`            | Core: connection, CRUD, query builder, migrations, transactions. |
 | `gorm/sqlite`     | SQLite driver (pure-Go via `github.com/glebarez/sqlite`). |
 | `gorm/postgres`   | PostgreSQL driver (via pgx).                              |
-| `gorm/annotations` | [Custom annotation pack](/libraries/gorm-annotations) — `@Pk`, `@Column(name)`, `@Index`, `@Timestamps`, ... that lower to `@structTag("gorm", ...)`. |
+| `gorm/annotations` | Custom-annotation pack — `@Pk`, `@Column(name)`, `@Index`, `@Timestamps`, ... that lower to `@structTag("gorm", ...)`. Covered in [Annotation pack](#annotation-pack) below. |
 
 Pull only what you need:
 
@@ -65,9 +65,9 @@ type User {
 ```
 
 Writing `@structTag` repeatedly gets noisy fast. The
-[`gorm/annotations`](/libraries/gorm-annotations) pack ships a curated
-set of `synth` annotations that lower to the same `@structTag` calls
-— the same model written with the pack:
+[`gorm/annotations`](#annotation-pack) pack ships a curated set of
+`synth` annotations that lower to the same `@structTag` calls — the
+same model written with the pack:
 
 ```sova
 import "gorm/annotations" using *
@@ -92,7 +92,8 @@ type Post {
 ```
 
 `@Timestamps` injects the `createdAt`/`updatedAt` fields itself; see
-the annotation pack page for the full list.
+the [annotation pack](#annotation-pack) section below for the full
+list.
 
 ## Connecting
 
@@ -244,14 +245,232 @@ let _ = gorm.find(q, out)
 | `tx.sova`       | `begin`, `commit`, `rollback`, `savepoint`, `rollbackTo`.  |
 | `raw.sova`      | `raw`, `exec`.                                             |
 
+## Annotation pack
+
+**`gorm/annotations`** is a [synth pack](/language/annotations) that
+turns the verbose `@structTag("gorm", "...")` form into ergonomic
+`@Pk` / `@Column(name)` / `@Index` / `@Timestamps` decorators.
+Every annotation in this pack lowers — at compile time — to one or
+more `@structTag` entries that real GORM reflects on at runtime, so
+there is **no extra runtime cost**. The Sova
+[synth expander](/language/annotations) does all of the work before
+codegen runs.
+
+Every annotation in this pack is declared `on backend` — see
+[side constraints](/language/annotations#side-constraints). The
+compiler rejects `@Pk` on a frontend type at the use site with a
+clear diagnostic, so accidentally putting a GORM annotation in the
+wrong place is impossible. The pack still applies to declarations in
+`on shared` files because their backend half is a real Go struct
+that GORM reflects on.
+
+### Installing
+
+```toml
+[dependencies]
+"gorm/annotations" = { version = "^0.1.0" }
+```
+
+```sova
+import "gorm/annotations" using *
+```
+
+`using *` is the recommended import form for any synth pack — see
+[Annotations](/language/annotations) for why.
+
+### Primary key
+
+| Annotation        | Lowers to                                            |
+| ----------------- | ---------------------------------------------------- |
+| `@PrimaryKey`     | `@structTag("gorm", "primaryKey")`                   |
+| `@AutoIncrement`  | `@structTag("gorm", "autoIncrement")`                |
+| `@Pk`             | `@structTag("gorm", "primaryKey;autoIncrement")` — the combo most apps want. |
+
+```sova
+type User {
+    @Pk
+    id: int = 0
+}
+```
+
+### Columns
+
+| Annotation          | Argument             | Lowers to                                       |
+| ------------------- | -------------------- | ----------------------------------------------- |
+| `@Column(name)`     | `name: string`       | `@structTag("gorm", "column:" + name)`          |
+| `@JSON(name)`       | `name: string`       | `@structTag("json", name)`                      |
+| `@Ignore`           | —                    | `@structTag("gorm", "-")` — exclude from the DB. |
+
+```sova
+type Post {
+    @Column("post_id") @JSON("id")
+    id: int = 0
+
+    @Ignore
+    sessionScratch: string = ""
+}
+```
+
+### Indexes and uniqueness
+
+| Annotation                | Argument              | Lowers to                                            |
+| ------------------------- | --------------------- | ---------------------------------------------------- |
+| `@Index`                  | —                     | `@structTag("gorm", "index")`                        |
+| `@NamedIndex(idx)`        | `idx: string`         | `@structTag("gorm", "index:" + idx)`                 |
+| `@Unique`                 | —                     | `@structTag("gorm", "unique")`                       |
+| `@UniqueIndex`            | —                     | `@structTag("gorm", "uniqueIndex")`                  |
+| `@NamedUniqueIndex(idx)`  | `idx: string`         | `@structTag("gorm", "uniqueIndex:" + idx)`           |
+
+```sova
+type Account {
+    @Pk id: int = 0
+
+    @UniqueIndex
+    email: string = ""
+
+    @NamedIndex("idx_active_since")
+    activeSince: int = 0
+}
+```
+
+### Constraints
+
+| Annotation              | Argument              | Lowers to                                            |
+| ----------------------- | --------------------- | ---------------------------------------------------- |
+| `@NotNull`              | —                     | `@structTag("gorm", "not null")`                     |
+| `@Size(n)`              | `n: int`              | `` `@structTag("gorm", "size:${n}")` `` — string-template fold produces `"size:200"` etc. |
+| `@Default(value)`       | `value: string`       | `@structTag("gorm", "default:" + value)`             |
+| `@Constraints(rules)`   | `rules: string`       | `@structTag("gorm", rules)` — catch-all for anything not covered above. |
+
+```sova
+type Product {
+    @Pk id: int = 0
+
+    @Size(200) @NotNull
+    name: string = ""
+
+    @Default("0")
+    stock: int = 0
+
+    @Constraints("check:price >= 0")
+    price: int = 0
+}
+```
+
+### Member-injection annotations
+
+These don't decorate an existing field — they **inject new fields**
+into the type at compile time. Both apply on `on type T`:
+
+| Annotation     | Injects                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `@Timestamps`  | `createdAt: int = 0` and `updatedAt: int = 0`                 |
+| `@SoftDelete`  | `deletedAt: int = 0`                                          |
+
+```sova
+@Timestamps
+@SoftDelete
+type Post {
+    @Pk id: int = 0
+    title: string = ""
+}
+```
+
+After expansion the Sova compiler sees the type as if you had typed
+those three fields by hand — they bind, infer, and emit normally.
+LSP member completion on `post.` shows them.
+
+The default type is `int` (Unix-style timestamps) because the synth
+pack avoids forcing a `std/time` dependency on every consumer.
+Override by writing the fields yourself when you prefer
+`time.Time`.
+
+### `@GormModel(table)` — every-field shortcut
+
+`@GormModel(name)` on a type adds a table-level tag *and* iterates
+every field, decorating each with a `column:<fieldname>` tag. It's
+the one-line `@GormModel("users")` form for tables where the column
+names match the field names.
+
+```sova
+@GormModel("users")
+type User {
+    @Pk id: int = 0
+    name: string = ""
+    email: string = ""
+}
+```
+
+Expands to:
+
+```sova
+@structTag("strix.gorm.table", "users")
+type User {
+    @structTag("gorm", "primaryKey;autoIncrement")
+    @structTag("gorm", "column:id")
+    id: int = 0
+
+    @structTag("gorm", "column:name")
+    name: string = ""
+
+    @structTag("gorm", "column:email")
+    email: string = ""
+}
+```
+
+Mix and match with per-field annotations — they stack rather than
+override.
+
+### Stacking annotations
+
+Built-in `@structTag` annotations stack: multiple entries with the
+same namespace are joined with a space when GORM sees the Go struct
+tag at runtime. So:
+
+```sova
+@Pk @Size(200) @NotNull
+name: string = ""
+```
+
+produces a Go struct tag of `gorm:"primaryKey autoIncrement size:200 not null"` — both GORM-readable and consistent with the upstream
+documentation. Order is preserved.
+
+### What lowering looks like
+
+Run `sova synth expand --file <your-file>.sova` to see exactly what
+the compiler generates. For the demo earlier:
+
+```sova
+@Pk
+@Column("user_id")
+id: int = 0
+```
+
+→ after expansion:
+
+```sova
+@structTag("gorm", "primaryKey;autoIncrement")
+@structTag("gorm", "column:user_id")
+id: int = 0
+```
+
+→ Go codegen:
+
+```go
+ID int64 `gorm:"primaryKey;autoIncrement column:user_id" json:"id,omitempty"`
+```
+
+(The `json:"id,omitempty"` is the default Sova field tag; supply your
+own `@JSON("...")` to override it.)
+
 ## See also
 
-- **[GORM annotations](/libraries/gorm-annotations)** — the synth pack
-  that turns `@structTag("gorm", "...")` into ergonomic `@Pk`,
-  `@Column(...)`, `@Timestamps` decorators.
-- **[Annotations](/language/annotations)** — the synth system the
-  annotation pack is built on.
-- The upstream
-  [GORM documentation](https://gorm.io/docs/) — every tag string the
-  Sova layer accepts is whatever real GORM reflects on at runtime,
-  so the upstream tag reference applies verbatim.
+- **[Annotations](/language/annotations)** — the synth system that
+  powers the annotation pack. Read it if you want to add your own
+  GORM decorators (e.g. `@HasMany`, `@BelongsTo`) on top of
+  `@structTag`.
+- **[GORM tag reference](https://gorm.io/docs/models.html#Fields-Tags)** —
+  the upstream list of every tag string the Sova layer eventually
+  feeds GORM.
+- **[Strix annotations](/frontend/annotations)** — the frontend-side
+  counterpart pack.

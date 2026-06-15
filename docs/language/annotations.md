@@ -20,10 +20,10 @@ information about that declaration. Sova ships two flavours of them:
   pass sees the code.
 
 Custom annotations are how libraries like Strix's router and the
-[GORM annotation pack](/libraries/gorm-annotations) reduce a screen of
-`@structTag("gorm", "primaryKey;autoIncrement")` repetitions to a
-single `@Pk` on every model. This page covers both flavours and the
-`synth` language used to build the second one.
+[GORM annotation pack](/libraries/gorm#annotation-pack) reduce a
+screen of `@structTag("gorm", "primaryKey;autoIncrement")` repetitions
+to a single `@Pk` on every model. This page covers both flavours and
+the `synth` language used to build the second one.
 
 ## Using a built-in annotation
 
@@ -107,11 +107,64 @@ You can confirm that with `sova synth expand` — see the
 [CLI reference](/reference/cli) — which re-emits Sova source after
 expansion.
 
+### Side constraints
+
+A synth can be restricted to one of Sova's
+[sides](/language/sides) by inserting `backend`, `frontend`, or
+`shared` between `on` and the target kind:
+
+```sova
+synth Pk on backend field F {
+    emit on F {
+        @structTag("gorm", "primaryKey")
+    }
+}
+
+synth Reactive on frontend type T {
+    for f in T.fields {
+        emit on f {
+            @reactive
+        }
+    }
+}
+```
+
+The rule the expander enforces at the use site:
+
+| Synth declares  | Allowed on `on backend` files | Allowed on `on frontend` files | Allowed on `on shared` files |
+| --------------- | ----------------------------- | ------------------------------ | ---------------------------- |
+| no side         | yes                           | yes                            | yes                          |
+| `backend`       | yes                           | **no**                         | yes                          |
+| `frontend`      | **no**                        | yes                            | yes                          |
+| `shared`        | **no**                        | **no**                         | yes                          |
+
+`backend`-only and `frontend`-only synths are still allowed on
+`on shared` declarations because a shared declaration lives on both
+sides — a `@Pk` on a shared type is fine because the backend
+implementation still receives the struct tag GORM reads. A
+`shared`-required synth requires the use site to itself be in a
+shared file, since the synth is making a statement about something
+that must round-trip across the wire.
+
+Using a side-restricted synth on the wrong side is a clean diagnostic
+at the use site, not a runtime mystery:
+
+```
+error[ERR.SEM.0017]: synth 'Pk' is declared `on backend` and cannot
+be used in a file on side `frontend` (the file's side must match, or
+be `shared` for backend/frontend-restricted synths)
+```
+
+This is the recommended pattern for any library annotation pack: pin
+each synth to its real audience so consumers can't accidentally
+decorate the wrong side. `gorm/annotations` ships every entry as
+`on backend`; `strix/annotations` ships every entry as `on frontend`.
+
 ### Target kinds
 
-The `on <kind> <BindName>` clause says which declarations the synth
-attaches to and binds the surrounding declaration to a name you can
-reference in the body. Available kinds:
+The `on [side] <kind> <BindName>` clause says which declarations the
+synth attaches to and binds the surrounding declaration to a name you
+can reference in the body. Available kinds:
 
 | Kind     | Attaches to                                  | Example                            |
 | -------- | -------------------------------------------- | ---------------------------------- |
@@ -380,5 +433,5 @@ synth's signature and source, and **Go to Definition** on a
 Everything else (`@Pk`, `@Route("/foo")`, `@Reactive`, ...) is a
 custom annotation defined by a library you depend on. The Strix and
 GORM annotation packs ship a curated set; see
-[Strix annotations](/libraries/strix-annotations) and
-[GORM annotations](/libraries/gorm-annotations) for the full list.
+[Strix annotations](/frontend/annotations) and
+[GORM](/libraries/gorm#annotation-pack) for the full list.

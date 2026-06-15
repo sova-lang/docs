@@ -1,6 +1,6 @@
 ---
-title: Strix annotations
-sidebar_position: 2
+title: Annotations
+sidebar_position: 7
 ---
 
 # Strix annotations
@@ -19,6 +19,14 @@ Like the rest of Sova's annotation packs, every entry expands at
 compile time to existing primitives (`@reactive`, `@structTag`,
 registry appends). The pack adds nothing at runtime — see
 [Annotations](/language/annotations) for the underlying machinery.
+
+Every annotation in this pack is declared `on frontend` — see
+[side constraints](/language/annotations#side-constraints). The
+compiler rejects `@Reactive` on a backend type at the use site with
+a clear diagnostic, so accidentally putting a Strix annotation in
+the wrong place is impossible. The pack still applies to
+declarations in `on shared` files because their frontend half is a
+real JS class that participates in Strix's reactivity.
 
 ## Installing
 
@@ -61,7 +69,7 @@ type CounterStore {
 Under the hood:
 
 ```sova
-synth Reactive on type T {
+synth Reactive on frontend type T {
     for f in T.fields {
         emit on f {
             @reactive
@@ -125,7 +133,7 @@ func UserView(params: any): Composable {
 What expansion does:
 
 ```sova
-synth Route(path: string) on func F {
+synth Route(path: string) on frontend func F {
     emit on F {
         @structTag("strix.route", path)
     }
@@ -174,9 +182,13 @@ projects agree on the same tag namespace.
 
 - **[Strix overview](/frontend/strix-overview)** — the framework this
   pack decorates.
+- **[Reactivity](/frontend/reactivity)** — the built-in `@reactive`
+  annotation `@Reactive` / `@ReactiveShared` fan out to.
+- **[Router](/frontend/router)** — the `Trail([...])` API that
+  `@Route` registers against.
 - **[Annotations](/language/annotations)** — the synth system that
   powers this pack. Read it to add your own Strix decorators
   (`@Computed`, `@OnMount(...)`, ...) on top of the existing
   primitives.
-- **[GORM annotations](/libraries/gorm-annotations)** — the companion
-  pack for backend models; same conventions, different surface.
+- **[GORM](/libraries/gorm)** — the companion pack for backend
+  models; same conventions, different surface.
