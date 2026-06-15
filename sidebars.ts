@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
         'language/interfaces',
         'language/concurrency',
         'language/packages',
+        'language/annotations',
       ],
     },
     {
@@ -53,6 +54,16 @@ const sidebars: SidebarsConfig = {
         'frontend/router',
         'frontend/i18n',
         'frontend/stores',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Libraries',
+      collapsed: false,
+      items: [
+        'libraries/gorm',
+        'libraries/gorm-annotations',
+        'libraries/strix-annotations',
       ],
     },
     {

@@ -108,6 +108,58 @@ sova check
 
 Useful in CI as a quick gate before the full `sova build`.
 
+## `sova synth`
+
+A small group of subcommands for inspecting and validating
+[custom annotations](/language/annotations) (synth packages):
+
+- **`sova synth list [path]`** — print every `synth` declaration the
+  current build sees, with its signature and target. Reads from every
+  package the project resolves, including imported synth packs.
+
+  ```text
+  $ sova synth list
+  Column(name: string) on field F
+  Pk on field F
+  Reactive on type T
+  Route(path: string) on func F
+  Timestamps on type T
+  ...
+  ```
+
+- **`sova synth check [path]`** — run the check pipeline so synth
+  expansion fires; report any diagnostics without emitting code.
+  Cheaper than `sova check` because codegen passes never run.
+
+- **`sova synth expand [path]`** — re-emit the project's Sova source
+  after running synth expansion and annotation folding. The output
+  shows exactly what a custom annotation lowered to, with folded
+  literal arguments (`@structTag("gorm", "column:id")` rather than
+  `@structTag("gorm", "column:" + "id")`). Synth-side files are
+  skipped because they are the source of the expansion, not the
+  output.
+
+  Flags:
+
+  - `--out <dir>` — write each file to `<dir>/<relative-path>`
+    instead of stdout.
+  - `--file <name>` — restrict output to one source file (substring
+    match against the file's stored relative path).
+
+  ```text
+  $ sova synth expand --file model.sova
+  // === src/model.sova ===
+  package myapp on backend
+  ...
+  type User {
+      @structTag("gorm", "primaryKey;autoIncrement") id: int
+      @structTag("gorm", "column:display_name") name: string
+      ...
+      createdAt: int = 0
+      updatedAt: int = 0
+  }
+  ```
+
 ## `sova clean`
 
 Delete the `dist/`, `.output/`, and `.sova/deps/` caches. Use sparingly
