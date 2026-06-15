@@ -275,7 +275,7 @@ synth PublicOnly on type T {
 There are also string properties — `<bind>.name` on everything that
 has one, plus `<bind>.type` on fields and params — that interpolate
 when they appear in annotation argument expressions (`"col:" + f.name`
-above, or `\`size:${n}\`` for an int param).
+above, or `` `size:${n}` `` for an int param).
 
 ### Parameters and substitution
 
