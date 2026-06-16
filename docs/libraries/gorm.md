@@ -192,13 +192,13 @@ new handle:
 import "gorm"
 
 let adults = new []User()
-let q = gorm.where(gorm.table(db, "users"), "age > ?", [18])
+let q = gorm.whereSql(gorm.table(db, "users"), "age > ?", [18])
 let q2 = gorm.order(q, "name asc")
 let q3 = gorm.limit(q2, 50)
 let _ = gorm.find(q3, adults)
 ```
 
-The available chain steps mirror GORM's: `where`, `or`, `not`,
+The available chain steps mirror GORM's: `whereSql`, `or`, `not`,
 `order`, `groupBy`, `having`, `limit`, `offset`, `selectColumns`,
 `preload`, `joins`, `table`, `distinct`.
 
@@ -240,7 +240,7 @@ let _ = gorm.find(q, out)
 | --------------- | ---------------------------------------------------------- |
 | `db.sova`       | `open`, `openWithConfig`, `close`, `ping`, `lastError`, `rowsAffected`, `newConfig`. |
 | `crud.sova`     | `create`, `createBatch`, `save`, `update`, `updates`, `deleteRecord`, `first`, `firstByID`, `last`, `find`, `count`, `countInto`. |
-| `query.sova`    | `where`, `not`, `or`, `order`, `groupBy`, `having`, `limit`, `offset`, `selectColumns`, `preload`, `joins`, `table`, `distinct`. |
+| `query.sova`    | `whereSql`, `not`, `or`, `order`, `groupBy`, `having`, `limit`, `offset`, `selectColumns`, `preload`, `joins`, `table`, `distinct`. |
 | `migrate.sova`  | `autoMigrate`, `dropTable`, `hasTable`.                    |
 | `tx.sova`       | `begin`, `commit`, `rollback`, `savepoint`, `rollbackTo`.  |
 | `raw.sova`      | `raw`, `exec`.                                             |

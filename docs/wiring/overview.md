@@ -133,9 +133,12 @@ same name.
 ### `transport`
 
 Pin the wire to a specific transport. Backend wires accept `http`
-(default) or `ws`; frontend wires accept `ws` (default) or `sse`.
-Other combinations are rejected at compile time. Use this when you
-want a websocket-based wire for push semantics.
+(default), `ws`, or `raw`; frontend wires accept `ws` (default) or
+`sse`. Other combinations are rejected at compile time. Use this
+when you want a websocket-based wire for push semantics, or `raw`
+when you need to drop out of the JSON-RPC envelope entirely
+(cookies, redirects, OAuth callbacks, webhook receivers — see
+[Raw HTTP wires](./raw-http.md)).
 
 ### `authn`
 

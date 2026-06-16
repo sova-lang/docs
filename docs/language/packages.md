@@ -67,6 +67,11 @@ Sova has two visibility levels: public (the default) and
 package-private. Names starting with a single underscore are
 package-private; they are invisible from any other package.
 
+The rule is purely name-based, so it applies uniformly to *every*
+named top-level declaration — functions, externs, types, enums,
+consts, and vars alike. There is no separate `private` keyword; the
+leading underscore is the whole mechanism.
+
 ```sova
 package myapp/users on shared
 
@@ -84,7 +89,14 @@ func _format(n: int): string {  // package-private
 
 The compiler enforces underscore privacy at every cross-package access
 site: completion hides the names, definition lookup ignores them, and
-direct references produce a compile error.
+direct references produce a compile error — `'_format' is
+package-private (names starting with a single `_` are not visible
+outside their declaring package)`.
+
+This is exactly how the standard library hides its plumbing: each
+public stdlib function is a thin wrapper over a `_`-prefixed
+[extern](/advanced/interop#side-specific-externs) that callers in other
+packages never see.
 
 Double-underscore names (`__name`) are exempt from this rule by
 convention. They are reserved for framework-internal helpers that

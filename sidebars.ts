@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
         'wiring/sessions',
         'wiring/authorization',
         'wiring/wired-state',
+        'wiring/raw-http',
       ],
     },
     {
