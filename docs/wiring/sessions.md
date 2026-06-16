@@ -21,7 +21,8 @@ wire func me(): User {
 
 wire func logIn(email: string, password: string): User {
     let u = authenticate(email, password)
-    @.authenticate(userId: u.id, roles: ["user"])
+    @.authenticate(u.id, {})
+    @.addRoles(["user"])
     return u
 }
 ```
@@ -46,26 +47,35 @@ A session offers:
 | `@.rooms` | `[]string` | Pub/sub rooms the session belongs to. |
 | `@.connectedAt` | `int` | Unix seconds when the session was bound. |
 | `@.isAuthenticated()` | `bool` | True after a successful `authenticate(...)`. |
-| `@.authenticate(...)` | `void` | Sets the user payload, roles, and claims. |
+| `@.authenticate(user: any, claims: map<string, any>)` | `void` | Sets the user payload and claims. Use `addRoles(...)` afterwards to attach roles. |
 | `@.logout()` | `void` | Clears the session and removes the cookie. |
 | `@.addRoles(roles: []string)` | `void` | Append roles. |
+| `@.removeRoles(roles: []string)` | `void` | Remove roles. |
+| `@.setRoles(roles: []string)` | `void` | Replace the role set. |
+| `@.clearRoles()` | `void` | Drop all roles. |
 | `@.hasRole(role: string)` | `bool` | Check a single role. |
 | `@.join(room: string)` | `void` | Add the session to a pub/sub room. |
 | `@.leave(room: string)` | `void` | Remove from a room. |
+| `@.inRoom(room: string)` | `bool` | Check room membership. |
 
 ### Authenticating
 
 ```sova
 wire(authn: false) func logIn(email: string, password: string): User {
     let u = verify(email, password)
-    @.authenticate(
-        userId: u.id,
-        roles: ["user"],
-        claims: {"plan": u.plan},
-    )
+    @.authenticate(u.id, {"plan": u.plan})
+    @.addRoles(["user"])
     return u
 }
 ```
+
+`@.authenticate` takes two positional arguments: the user payload
+(any shape — typically the user id, but a struct works too) and a
+claims map. Roles attach via the separate `addRoles` / `setRoles`
+helpers afterwards. The split is deliberate — assigning roles is a
+separate operation that some auth flows want to do later in the
+request (e.g. an admin endpoint promoting a user), so it doesn't
+live on `authenticate`'s signature.
 
 After `authenticate`, the session cookie is signed with the
 `session_secret` declared in `sova.toml` and returned to the client.

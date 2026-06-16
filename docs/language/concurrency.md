@@ -107,6 +107,46 @@ type Cache {
 }
 ```
 
+## No `async` / `await` on the surface
+
+Sova deliberately omits user-facing `async` and `await` keywords.
+Asynchrony is a property of the call graph the compiler tracks for
+you — a function is "async" iff it (transitively) calls an
+extern declared `async`, and that bubbles up through every caller
+automatically via the `pass_propagate_async` pass. From the
+author's perspective every call looks synchronous; from the
+emitter's perspective the right `await` / `Promise.resolve` calls
+get inserted on the frontend, and goroutine-blocking semantics
+preserved on the backend.
+
+```sova
+import "std/jwt"
+
+// jwt.signHS256 is declared `async` in its extern. The compiler
+// notices, auto-lifts issueToken (and every transitive caller) to
+// the async chain, and emits `await jwt.signHS256(...)` on the JS
+// side without us writing `await` at all.
+func issueToken(userId: string, secret: string): string {
+    return jwt.signHS256(payload(userId), secret)
+}
+
+wire(authn: false) func login(name: string): string {
+    return issueToken(name, env.get("JWT_SECRET"))
+}
+```
+
+The single exception is the `async` modifier on `extern func`
+declarations — the binding tells the compiler the underlying
+host call is asynchronous on at least one side (typically the
+frontend). User-level code never writes `async func` or `await`.
+
+This trade-off comes from prioritising language-level readability
+over local fine-grain control: most Sova code is request-handler
+shaped, where async chains are wide but shallow, and explicit
+`await` everywhere reads as ceremonial. The escape hatch when you
+need real fine-grain concurrency is `go` + channels, which Sova
+keeps as first-class surface forms.
+
 ## When to use channels vs reactive state
 
 Channels model *streams of events*: requests arriving on the server,

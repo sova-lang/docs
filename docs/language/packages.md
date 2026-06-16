@@ -148,15 +148,20 @@ The most useful modules:
 
 | Module | What it ships |
 | --- | --- |
-| `std/strings` | Substring, case, split, join, trim. |
-| `std/list` | `List`, `LinkedList`, and their concurrent counterparts. |
+| [`std/time`](/stdlib/time) | `Instant`, `Duration`, `Zone`, `Date`, `DateTime`, DST helpers, pattern formatter / parser. |
+| [`std/random`](/stdlib/random) | Casual RNG, crypto-grade `bytes` / `hex`, seeded `Rng`, generic `WeightedPool<T>`. |
+| [`std/env`](/stdlib/env) | Cross-platform env-var access + dotenv autoload. |
+| [`std/fetch`](/stdlib/fetch) | Outbound HTTP client (builder + convenience helpers). |
+| `std/strings` | Substring, case, split, join, trim, replace. |
+| `std/list` | `List<T>`, `LinkedList<T>`, concurrent variants. |
 | `std/sync` | `Mutex`, `RWMutex`, `WaitGroup`, `Once`. |
-| `std/json` | `parse` / `stringify`. |
-| `std/time` | `now`, `sleep`, formatting. |
-| `std/random` | RNG, with the test runner's determinism hook. |
+| `std/json` | `parse` / `stringify`. Returned `any` supports direct `[k]` indexing. |
 | `std/errors` | Helpers around the built-in `error` type. |
 
-The [reference section](/reference/cli) lists every shipped module.
+Full docs for the four richest packages live in the
+[Standard Library section](/stdlib/overview); the rest are
+concise enough to read directly from source — `ctrl+click` any
+stdlib symbol in your editor opens the actual file.
 
 ## Dependencies
 

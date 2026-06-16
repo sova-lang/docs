@@ -49,6 +49,34 @@ println(p.x + p.y)
 Named fields make destructuring and field access explicit, which is
 particularly useful when a function returns multiple values.
 
+### Trailing commas
+
+Array, map, and tuple literals accept an optional trailing comma:
+
+```sova
+let xs = [
+    "common",
+    "rare",
+    "legendary",
+]
+
+let dict = {
+    "alice": 1,
+    "bob":   2,
+}
+
+let pair = (1, "one",)
+```
+
+Useful for multi-line literals where you want every element on
+its own line, including the last — keeps git diffs clean when
+items are added or reordered. Single-line literals work the same
+way: `[1, 2, 3,]` is valid (just stylistically rare). Empty
+literals (`[]`, `{}`) work everywhere a typed context is available —
+field defaults, typed `let`, return positions, assignments, and
+function arguments all propagate the expected element type into
+the literal.
+
 ## User-defined types
 
 A `type` declaration introduces a nominal record:
