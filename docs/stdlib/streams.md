@@ -72,7 +72,9 @@ resolves it from `fn`'s return type at the call site.
 | `count()` | `int` | Number of elements. |
 | `isEmpty()` | `bool` | True when no elements. |
 | `first()` | `option<T>` | `none` when empty. |
+| `firstOrElse(def)` | `T` | First element, or `def` when empty. The `??` shorthand for `first()`. |
 | `last()` | `option<T>` | `none` when empty. |
+| `lastOrElse(def)` | `T` | Last element, or `def` when empty. |
 | `firstMatch(pred)` | `option<T>` | First element where `pred(x)` is true. |
 | `allMatch(pred)` | `bool` | True when every element satisfies `pred`. True for empty streams. |
 | `anyMatch(pred)` | `bool` | True when at least one element satisfies `pred`. False for empty streams. |
@@ -87,6 +89,7 @@ resolves it from `fn`'s return type at the call site.
 | Op | Returns |
 | --- | --- |
 | `toSlice()` | `[]T` |
+| `toList()` | `std/list.List<T>` — snapshot copy; subsequent list mutations don't affect the stream. |
 | `forEach(fn)` | `()` — applies `fn` to each element. |
 
 ## Combining streams
@@ -136,6 +139,28 @@ let ids = streams.of(users)
     .toSlice()
 ```
 
+**Read the first match with a fallback (no option-unwrapping in caller code):**
+
+```sova
+let pageSize = streams.of(headers)
+    .firstMatch(func(h: Header): bool { return h.name == "X-Page-Size" })
+    .map(func(h: Header): int { return parseInt(h.value) })
+    ?? 50
+
+// or, with a typed default that doesn't need ??:
+let primary = streams.of(addresses).firstOrElse(defaultAddress)
+let trailing = streams.of(audit).lastOrElse(emptyEntry)
+```
+
+**Hand the chain off as a typed collection:**
+
+```sova
+let adults: list.List<User> = streams.of(users)
+    .filter(func(u: User): bool { return u.age >= 18 })
+    .toList()
+adults.add(newUser)
+```
+
 ## Performance notes
 
 - Every step allocates a fresh `[]T`. For a 100-step chain over
@@ -157,4 +182,4 @@ let ids = streams.of(users)
 - **Parallel evaluation.** All operations run sequentially on
   the calling goroutine. Spin your own `parallel.map` if you
   need it.
-- **`std/list.List<T>` integration.** Convert via `streams.of(list.toSlice())`.
+- **Drain back to `std/list.List<T>`.** Use `.toList()` at the end of a chain. The other direction is symmetric: `myList.stream()` snapshots the list and returns a `Stream<T>`.

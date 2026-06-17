@@ -170,6 +170,62 @@ let port = (env.get("PORT") as? int) ?? 8080
 If the environment variable is unset or unparsable, `port` falls back
 to `8080`.
 
+## Casts between handle-wrapper types
+
+Sova types with a single `handle: any` field follow a special cast
+contract. `browserx` uses this shape for every WebIDL wrapper
+(`Element`, `HTMLInputElement`, `MouseEvent`, ...), but the rule is
+general — any user type with `handle: any` participates.
+
+```sova
+let el = browserx.byId("submit")!     // Element
+let input = el as? HTMLInputElement   // option<HTMLInputElement>
+let force = el as HTMLInputElement    // HTMLInputElement, no runtime check
+```
+
+- **`as? T`** runs a runtime `instanceof` check against the
+  target type's JS-side constructor. Returns `some(T)` when the
+  underlying handle matches, `none` when it doesn't. Use this whenever
+  the call site might receive a wrong subtype.
+- **`as T`** rewraps the handle without checking. The result is a
+  typed wrapper around whatever the handle actually is. Methods that
+  the runtime object doesn't carry return `undefined` rather than
+  throwing — matching the rest of the cast policy. Use this when you
+  already know the type (e.g. you just constructed it).
+
+The check uses the JS engine's prototype chain, not just the tag
+name, so a custom element extending `HTMLInputElement` narrows
+correctly.
+
+## `instanceof` — type test
+
+`instanceof` evaluates to a `bool` without committing to a cast:
+
+```sova
+let h = browserx.byId("submit")!
+if h instanceof HTMLInputElement {
+    let i = h as HTMLInputElement
+    i.setValue("ready")
+}
+```
+
+For handle-wrapper targets the check matches `as?`'s runtime test:
+the underlying handle's prototype chain. For primitives it falls back
+to a `typeof` check. `null` / `undefined` receivers always return
+`false`; a missing JS-side constructor returns `false` rather than
+throwing.
+
+The natural reading is the imperative one — *"is this thing one of
+those?"*. Use it as a guard:
+
+```sova
+guard let e = (raw as? Event) else { return }
+if e instanceof MouseEvent {
+    let m = e as MouseEvent
+    handleClick(m.clientX(), m.clientY())
+}
+```
+
 ## Putting it together
 
 ```sova

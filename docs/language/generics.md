@@ -41,20 +41,37 @@ Type parameters are usually inferred at the call site:
 let p = new Pair(first: 1, second: "two")   // Pair<int, string>
 ```
 
-When inference would be ambiguous, supply the arguments explicitly:
-
-```sova
-let empty = emptyList<int>()
-let opt: option<int> = none
-```
-
-For type declarations, the instantiation appears in the type annotation
-or in the `new` form:
+For type declarations and constructors, the instantiation appears in
+the type annotation or in the `new` form:
 
 ```sova
 let xs: List<int> = []
 let other = new List<string>()
+let opt: option<int> = none
 ```
+
+## Explicit type arguments at call sites — turbofish
+
+For generic *functions* and *methods*, inference resolves the type
+parameters from the argument shapes. When inference would be ambiguous
+(e.g. `reduce<R>(seed: R, combine: ...)` where `R` only flows from a
+literal `0` that could be `int` or `float`), pin the type explicitly
+with the turbofish `::<T>`:
+
+```sova
+let n = identity::<int>(42)
+let strings = streams.of([1, 2, 3])
+    .mapTo::<string>(func(x: int): string { return formatInt(x) })
+
+let total = numbers.reduce::<float>(0.0, sum)
+```
+
+The `::` is mandatory. Without it, `name<T>(arg)` is genuinely
+ambiguous: the parser can't decide between a generic call and two
+chained comparisons `(name < T) > (arg)`. The turbofish is borrowed
+from Rust for the same reason it exists there — explicit and
+unambiguous, only typed when needed (which, in practice, is rarely;
+inference covers nearly every call site).
 
 ## Constraints
 
