@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
         'wiring/sessions',
         'wiring/authorization',
         'wiring/wired-state',
+        'wiring/http-shape',
         'wiring/raw-http',
       ],
     },
@@ -69,6 +70,9 @@ const sidebars: SidebarsConfig = {
         'stdlib/random',
         'stdlib/env',
         'stdlib/fetch',
+        'stdlib/oauth2',
+        'stdlib/oidc',
+        'stdlib/streams',
       ],
     },
     {

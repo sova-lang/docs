@@ -41,6 +41,9 @@ The stdlib's design promises:
 | [`std/random`](/stdlib/random) | `nextInt`/`nextFloat`/..., crypto-grade `bytes` / `hex`, seeded `Rng`, generic `WeightedPool<T>`. |
 | [`std/env`](/stdlib/env) | Cross-platform env-var access (`get` / `getOr` / `lookup`), no panics. |
 | [`std/fetch`](/stdlib/fetch) | Outbound HTTP client (`Request` builder, `Response`), `on shared`. |
+| [`std/oauth2`](/stdlib/oauth2) | OAuth 2.0 Authorization Code + PKCE client. Presets for Discord, Google, GitHub, Microsoft. |
+| [`std/oidc`](/stdlib/oidc) | OpenID Connect `id_token` verification on top of `std/oauth2`. JWKS discovery + caching, RS256 signature + iss/aud/exp validation. |
+| [`std/streams`](/stdlib/streams) | Chainable LINQ-style pipeline over slices. `filter` / `mapTo` / `flatMapTo` / `take` / `skip` / `sortedBy` / `groupBy` / `reduce` / `joinToString`. Eager, in-memory. |
 | `std/strings` | Substring, case, split, join, trim, replace. |
 | `std/list` | `List<T>`, `LinkedList<T>`, concurrent variants. |
 | `std/sync` | `Mutex`, `RWMutex`, `WaitGroup`, `Once`. |
