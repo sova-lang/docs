@@ -82,6 +82,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'libraries/gorm',
         'libraries/redis',
+        'libraries/npm',
       ],
     },
     {

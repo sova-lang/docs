@@ -156,6 +156,50 @@ Casts marked at the type are *implicit* in assignment positions: the
 compiler inserts the call automatically when a value of `SourceT`
 appears where `Self` is expected.
 
+### Overloading
+
+Methods, constructors, and top-level functions can be overloaded by
+parameter list. The compiler picks the best match per call site,
+scoring candidates against the argument types (exact > assignable >
+none). Concretely-typed parameters beat `any`-typed ones, so a
+wrap-style `new(handle: any)` ctor doesn't shadow the typed siblings.
+
+```sova
+type Box {
+    name: string = ""
+    n: int = 0
+
+    new(name: string) { this.name = name }
+    new(n: int) { this.n = n }
+
+    func describe(): string { return "box(" + this.name + ")" }
+    func describe(prefix: string): string {
+        return prefix + ": " + this.describe()
+    }
+}
+
+func plus(a: int, b: int): int { return a + b }
+func plus(a: string, b: string): string { return a + b }
+
+let b1 = new Box("foo")    // string ctor
+let b2 = new Box(42)       // int ctor
+b1.describe()              // no-arg method
+b1.describe("info")        // prefix method
+plus(1, 2)                 // int overload
+plus("hi ", "you")         // string overload
+```
+
+The same scoring algorithm drives all three sites — top-level
+functions, methods on a type, and constructors. If no candidate matches
+the call's arguments, you get an `ErrFuncParamMismatch` diagnostic
+pointing at the call site. If multiple candidates tie, source order
+wins.
+
+Overloads must differ in *parameter list*, not just return type — Sova
+has no return-type-driven dispatch. Each overload also needs the
+same identifier kind: you can't overload a function with a variable, or
+mix `new` ctors with methods.
+
 ### Struct tags via `@structTag`
 
 When a Sova type compiles to a Go struct (which is what happens for
