@@ -82,7 +82,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'libraries/gorm',
         'libraries/redis',
-        'libraries/npm',
       ],
     },
     {
@@ -91,6 +90,7 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         'advanced/interop',
+        'advanced/npm-packages',
         'advanced/testing',
         'advanced/deployment',
         'advanced/bundling',
